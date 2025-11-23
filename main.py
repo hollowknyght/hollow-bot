@@ -48,10 +48,6 @@ def is_valid_arabic(text: str) -> bool:
     return bool(re.search(r'[\u0600-\u06FF]', text))
 
 def get_random_article(word_count: int) -> str:
-    """
-    يرجع مقالة عربية من RSS تحتوي على عدد كلمات ثابت تمامًا word_count.
-    إذا المقال قصير، نكمل من المقال التالي حتى نصل للعدد المطلوب.
-    """
     global used_articles_normalized
     collected_words = []
     max_attempts = 15
@@ -213,10 +209,10 @@ def apply_condition(article: str, condition: str) -> str:
         return ' '.join([w for i, w in enumerate(words) if i != 1])
     elif condition == "عكس آخر كلمة بأول كلمة":
         if len(words) < 1: return article
-        return words[-1][::-1] + ' ' + ' '.join(words[1:-1]) + ' ' + words[0]
+        return words[-1] + ' ' + ' '.join(words[1:-1]) + ' ' + words[0]
     elif condition == "اكتب أول كلمة وآخر كلمة مرتين":
         if len(words) < 1: return article
-        return words[0] + ' ' + words[-1] + ' ' + words[0] + ' ' + words[-1] + ' ' + ' '.join(words[1:-1])
+        return words[0] + ' ' + words[-1] + ' ' + ' '.join(words[1:-1]) + ' ' + words[0] + ' ' + words[-1]
     elif condition == "عكس حروف آخر كلمتين":
         if len(words) < 2: return article
         words[-1] = words[-1][::-1]; words[-2] = words[-2][::-1]
