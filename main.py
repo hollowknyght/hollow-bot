@@ -207,22 +207,34 @@ def apply_condition(article: str, condition: str) -> str:
     words = article.split()
     if condition == "لا تكتب ثاني كلمة من المقال":
         return ' '.join([w for i, w in enumerate(words) if i != 1])
+    
     elif condition == "عكس آخر كلمة بأول كلمة":
-        if len(words) < 1: return article
-        return words[-1] + ' ' + ' '.join(words[1:-1]) + ' ' + words[0]
+        if len(words) < 1:
+            return article
+        return words[-1] + ' ' + ' '.join(words[1:-1]) + ' ' + words[0] if len(words) > 1 else words[0]
+
     elif condition == "اكتب أول كلمة وآخر كلمة مرتين":
-        if len(words) < 1: return article
-        return words[0] + ' ' + words[-1] + ' ' + ' '.join(words[1:-1]) + ' ' + words[0] + ' ' + words[-1]
+        if len(words) < 1:
+            return article
+        return words[0] + ' ' + words[0] + ' ' + ' '.join(words[1:-1]) + (' ' + words[-1] + ' ' + words[-1] if len(words) > 1 else '')
+
     elif condition == "عكس حروف آخر كلمتين":
-        if len(words) < 2: return article
-        words[-1] = words[-1][::-1]; words[-2] = words[-2][::-1]
+        if len(words) < 2:
+            return article
+        words[-1] = words[-1][::-1]
+        words[-2] = words[-2][::-1]
         return ' '.join(words)
+
     elif condition == "عكس حروف أول كلمتين":
-        if len(words) < 2: return article
-        words[0] = words[0][::-1]; words[1] = words[1][::-1]
+        if len(words) < 2:
+            return article
+        words[0] = words[0][::-1]
+        words[1] = words[1][::-1]
         return ' '.join(words)
+
     elif condition == "اكتب المقالة عكسيًا":
         return ' '.join(words[::-1])
+
     return article
 
 async def receive_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
