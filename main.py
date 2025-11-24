@@ -15,21 +15,13 @@ ASK_POINTS = 1
 OWNER_ID = 6124794883
 EXIT_WORD = "اطلع"
 
+# ---------- أسرع مصادر RSS فقط ----------
 RSS_FEEDS = [
-    "https://www.aljazeera.net/aljazeerarss/alanews.xml",
     "https://www.skynewsarabia.com/webservices/rss/ar/articles.xml",
     "https://www.alarabiya.net/.mrss/ar/rss.xml",
-    "https://www.bbc.com/arabic/index.xml",
-    "https://arabic.cnn.com/rss",
-    "https://rss.dw.com/rdf/rss-ar-all",
-    "https://www.mayadeen.net/rss",
-    "https://www.alarab.qa/rss",
-    "https://www.annahar.com/rss",
-    "https://www.elbalad.news/rss",
+    "https://www.aljazeera.net/aljazeerarss/alanews.xml",
     "https://www.youm7.com/rss/Section/3",
-    "https://www.alaraby.co.uk/rss",
-    "https://www.spa.gov.sa/rss",
-    "https://www.middle-east-online.com/rss"
+    "https://arabic.cnn.com/rss"
 ]
 
 used_articles_normalized = set()
@@ -40,7 +32,7 @@ def normalize_arabic(text: str) -> str:
     text = re.sub(r'[أإآ]', 'ا', text)
     text = re.sub(r'[ؤ]', 'و', text)
     text = text.replace('ة', 'ه')
-    text = re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.~&+=/\\|"\'؟]', '', text)
+    text = re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.~&+=/\\|"\'ـ؟]', '', text)
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
@@ -48,10 +40,6 @@ def is_valid_arabic(text: str) -> bool:
     return bool(re.search(r'[\u0600-\u06FF]', text))
 
 def get_random_article(word_count: int) -> str:
-    """
-    يرجع مقالة عربية من RSS تحتوي على عدد كلمات ثابت تمامًا word_count.
-    إذا المقال قصير، نكمل من المقال التالي حتى نصل للعدد المطلوب.
-    """
     global used_articles_normalized
     collected_words = []
     max_attempts = 15
@@ -91,7 +79,7 @@ def calculate_clean_word_count(text: str) -> int:
     words = text.split()
     clean_words = []
     for word in words:
-        clean_word = re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.&~+=/\\|"\'؟]', '', word)
+        clean_word = re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.&~+=/\\|"\'؟ـ]', '', word)
         if clean_word.strip() != '':
             clean_words.append(clean_word)
     return len(clean_words)
