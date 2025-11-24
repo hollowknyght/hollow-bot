@@ -20,6 +20,7 @@ RSS_FEEDS = [
     "https://www.skynewsarabia.com/webservices/rss/ar/articles.xml",
     "https://www.alarabiya.net/.mrss/ar/rss.xml",
     "https://www.aljazeera.net/aljazeerarss/alanews.xml"
+    "https://www.youm7.com/rss/Section/3"
 ]
 
 used_articles_normalized = set()
@@ -30,7 +31,7 @@ def normalize_arabic(text: str) -> str:
     text = re.sub(r'[أإآ]', 'ا', text)
     text = re.sub(r'[ؤ]', 'و', text)
     text = text.replace('ة', 'ه')
-    text = re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.~&+=/\\|"\'؟]', '', text)
+    text = re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.~&+=/\\|"\'؟ـ]', '', text)
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
@@ -81,7 +82,7 @@ def calculate_clean_word_count(text: str) -> int:
     words = text.split()
     clean_words = []
     for word in words:
-        clean_word = re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.&~+=/\\|"\'؟]', '', word)
+        clean_word = re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.&~+=/\\|"\'؟ـ]', '', word)
         if clean_word.strip() != '':
             clean_words.append(clean_word)
     return len(clean_words)
