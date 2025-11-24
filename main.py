@@ -15,12 +15,13 @@ ASK_POINTS = 1
 OWNER_ID = 6124794883
 EXIT_WORD = "اطلع"
 
-# المصادر الأسرع
+# اخترت أسرع المصادر فقط لتحسين الاستجابة
 RSS_FEEDS = [
+    "https://www.aljazeera.net/aljazeerarss/alanews.xml",
     "https://www.skynewsarabia.com/webservices/rss/ar/articles.xml",
     "https://www.alarabiya.net/.mrss/ar/rss.xml",
-    "https://www.aljazeera.net/aljazeerarss/alanews.xml"
-    "https://www.youm7.com/rss/Section/3"
+    "https://www.bbc.com/arabic/index.xml",
+    "https://arabic.cnn.com/rss"
 ]
 
 used_articles_normalized = set()
@@ -40,12 +41,14 @@ def is_valid_arabic(text: str) -> bool:
 
 def get_random_article(word_count: int) -> str:
     """
-    يجمّع المقالة من مقاطع صغيرة من أكثر من مصدر لضمان عدم التكرار
+    يرجع مقالة عربية من أي مصدر يحتوي على عدد كلمات ثابت تمامًا word_count.
+    إذا المقال قصير، يكمل من المقال التالي حتى يصل للعدد المطلوب.
     """
     global used_articles_normalized
     collected_words = []
-    max_attempts = 10
-    for _ in range(max_attempts):
+    attempts = 0
+    while len(collected_words) < word_count and attempts < 20:
+        attempts += 1
         random.shuffle(RSS_FEEDS)
         for rss_url in RSS_FEEDS:
             try:
@@ -61,15 +64,18 @@ def get_random_article(word_count: int) -> str:
                 normalized = normalize_arabic(content)
                 if normalized in used_articles_normalized:
                     continue
-                used_articles_normalized.add(normalized)
                 words = content.split()
+                used_articles_normalized.add(normalized)
                 for w in words:
                     collected_words.append(w)
-                    if len(collected_words) >= word_count:
-                        return ' '.join(collected_words[:word_count])
-        if len(collected_words) >= word_count:
-            break
-    # إذا لم يكمل العدد، يرجع كل ما جمعه
+                    if len(collected_words) == word_count:
+                        return ' '.join(collected_words)
+    # لو لم نصل لعدد الكلمات المطلوب، نعيد استخدام أي كلمات متاحة لضمان عدم التوقف
+    if len(collected_words) < word_count:
+        all_words = ' '.join(collected_words).split()
+        while len(all_words) < word_count:
+            all_words.extend(all_words)
+        collected_words = all_words[:word_count]
     return ' '.join(collected_words[:word_count])
 
 def adjust_time(seconds):
@@ -82,9 +88,8 @@ def calculate_clean_word_count(text: str) -> int:
     words = text.split()
     clean_words = []
     for word in words:
-        clean_word = re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.&~+=/\\|"\'؟ـ]', '', word)
-        if clean_word.strip() != '':
-            clean_words.append(clean_word)
+        clean_words = [w for w in words if re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.&~+=/\\|"\'؟ـ]', '', w).strip() != '']
+        break
     return len(clean_words)
 
 def calculate_repeat_word_count(text: str) -> int:
@@ -163,7 +168,7 @@ async def send_repeat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     word_count = context.chat_data.get('word_count', 10)
     words = await get_random_words(word_count)
     if not words:
-        await update.message.reply_text("hol up bro im tryna process alldes .")
+        await update.message.reply_text("جاري المعالجة، حاول مرة أخرى قليلاً.")
         return
     repeated_words = []
     target_answer = []
