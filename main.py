@@ -15,13 +15,11 @@ ASK_POINTS = 1
 OWNER_ID = 6124794883
 EXIT_WORD = "اطلع"
 
-# ---------- أسرع مصادر RSS فقط ----------
+# المصادر الأسرع
 RSS_FEEDS = [
     "https://www.skynewsarabia.com/webservices/rss/ar/articles.xml",
     "https://www.alarabiya.net/.mrss/ar/rss.xml",
-    "https://www.aljazeera.net/aljazeerarss/alanews.xml",
-    "https://www.youm7.com/rss/Section/3",
-    "https://arabic.cnn.com/rss"
+    "https://www.aljazeera.net/aljazeerarss/alanews.xml"
 ]
 
 used_articles_normalized = set()
@@ -32,7 +30,7 @@ def normalize_arabic(text: str) -> str:
     text = re.sub(r'[أإآ]', 'ا', text)
     text = re.sub(r'[ؤ]', 'و', text)
     text = text.replace('ة', 'ه')
-    text = re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.~&+=/\\|"\'ـ؟]', '', text)
+    text = re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.~&+=/\\|"\'؟]', '', text)
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
@@ -40,9 +38,12 @@ def is_valid_arabic(text: str) -> bool:
     return bool(re.search(r'[\u0600-\u06FF]', text))
 
 def get_random_article(word_count: int) -> str:
+    """
+    يجمّع المقالة من مقاطع صغيرة من أكثر من مصدر لضمان عدم التكرار
+    """
     global used_articles_normalized
     collected_words = []
-    max_attempts = 15
+    max_attempts = 10
     for _ in range(max_attempts):
         random.shuffle(RSS_FEEDS)
         for rss_url in RSS_FEEDS:
@@ -59,14 +60,15 @@ def get_random_article(word_count: int) -> str:
                 normalized = normalize_arabic(content)
                 if normalized in used_articles_normalized:
                     continue
-                words = content.split()
                 used_articles_normalized.add(normalized)
+                words = content.split()
                 for w in words:
                     collected_words.append(w)
-                    if len(collected_words) == word_count:
-                        return ' '.join(collected_words)
+                    if len(collected_words) >= word_count:
+                        return ' '.join(collected_words[:word_count])
         if len(collected_words) >= word_count:
             break
+    # إذا لم يكمل العدد، يرجع كل ما جمعه
     return ' '.join(collected_words[:word_count])
 
 def adjust_time(seconds):
@@ -79,7 +81,7 @@ def calculate_clean_word_count(text: str) -> int:
     words = text.split()
     clean_words = []
     for word in words:
-        clean_word = re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.&~+=/\\|"\'؟ـ]', '', word)
+        clean_word = re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.&~+=/\\|"\'؟]', '', word)
         if clean_word.strip() != '':
             clean_words.append(clean_word)
     return len(clean_words)
