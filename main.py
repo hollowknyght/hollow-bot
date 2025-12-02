@@ -24,7 +24,6 @@ RSS_FEEDS = [
 ]
 
 used_articles_normalized = set()
-stored_articles = []  # تخزين المقالات لاستخدام fallback
 
 def normalize_arabic(text: str) -> str:
     text = unicodedata.normalize('NFD', text)
@@ -39,25 +38,8 @@ def normalize_arabic(text: str) -> str:
 def is_valid_arabic(text: str) -> bool:
     return bool(re.search(r'[\u0600-\u06FF]', text))
 
-def fetch_articles_from_sources():
-    articles = []
-    for rss_url in RSS_FEEDS:
-        try:
-            feed = feedparser.parse(rss_url)
-        except Exception:
-            continue
-        entries = [e for e in feed.entries if 'summary' in e or 'title' in e]
-        for entry in entries:
-            content = entry.get('summary', '') or entry.get('title', '')
-            if content and is_valid_arabic(content):
-                articles.append(content)
-    return articles
-
 def get_random_article(word_count: int) -> str:
-    """
-    يرجع مقالة عربية من المصادر أو fallback من stored_articles
-    """
-    global used_articles_normalized, stored_articles
+    global used_articles_normalized
     collected_words = []
     attempts = 0
     while len(collected_words) < word_count and attempts < 20:
@@ -77,22 +59,12 @@ def get_random_article(word_count: int) -> str:
                 normalized = normalize_arabic(content)
                 if normalized in used_articles_normalized:
                     continue
-                used_articles_normalized.add(normalized)
-                stored_articles.append(content)  # تخزين المقال تلقائي
                 words = content.split()
+                used_articles_normalized.add(normalized)
                 for w in words:
                     collected_words.append(w)
                     if len(collected_words) == word_count:
                         return ' '.join(collected_words)
-    # fallback: استخدام المقالات المخزنة
-    if len(collected_words) < word_count and stored_articles:
-        for content in stored_articles:
-            words = content.split()
-            for w in words:
-                collected_words.append(w)
-                if len(collected_words) == word_count:
-                    return ' '.join(collected_words)
-    # إذا لم نصل للعدد المطلوب
     if len(collected_words) < word_count:
         all_words = ' '.join(collected_words).split()
         while len(all_words) < word_count:
@@ -108,10 +80,7 @@ def adjust_wpm(wpm):
 
 def calculate_clean_word_count(text: str) -> int:
     words = text.split()
-    clean_words = []
-    for word in words:
-        clean_words = [w for w in words if re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.&~+=/\\|"\'؟ـ]', '', w).strip() != '']
-        break
+    clean_words = [w for w in words if re.sub(r'[A-Za-z0-9:;\(\)\[\]\{\}\-،.&~+=/\\|"\'؟ـ]', '', w).strip() != '']
     return len(clean_words)
 
 def calculate_repeat_word_count(text: str) -> int:
@@ -157,6 +126,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def set_word_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return
     text = update.message.text.strip()
     match = re.match(r'^(\d+)\s+كلمة$', text)
     if match:
@@ -168,6 +139,8 @@ async def set_word_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("عدد الكلمات يجب أن يكون بين 1 و 50.")
 
 async def send_article(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return
     if not user_command_allowed(context.user_data, cooldown=0.8):
         return
     word_count = context.chat_data.get('word_count', 10)
@@ -177,7 +150,6 @@ async def send_article(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.chat_data['article'] = article
     context.chat_data['solved'] = False
 
-# ----- التكرار -----
 async def get_random_words(count=5):
     article = get_random_article(100)
     words = list(set(normalize_arabic(article).split()))
@@ -186,6 +158,8 @@ async def get_random_words(count=5):
     return random.sample(words, count)
 
 async def send_repeat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return
     if not user_command_allowed(context.user_data, cooldown=0.8):
         return
     word_count = context.chat_data.get('word_count', 10)
@@ -204,8 +178,9 @@ async def send_repeat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.chat_data['start_time_repeat'] = time.time()
     await update.message.reply_text(prompt)
 
-# ----- الشروط -----
 async def send_condition(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return
     if not user_command_allowed(context.user_data, cooldown=0.8):
         return
     conditions = [
@@ -250,6 +225,10 @@ def apply_condition(article: str, condition: str) -> str:
     return article
 
 async def receive_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # إضافة الفحص لمنع الطيران
+    if not update.message or not update.message.text:
+        return
+
     if update.effective_user.id == OWNER_ID and update.message.text.strip() == EXIT_WORD:
         await update.message.reply_text("أؤكي")
         await context.bot.leave_chat(update.effective_chat.id)
@@ -338,8 +317,9 @@ async def receive_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     context.chat_data['round_active'] = False
             await update.message.reply_text(response)
 
-# ----- الجولات -----
 async def start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return ConversationHandler.END
     if update.effective_chat.type not in ['group', 'supergroup']:
         await update.message.reply_text("هذا الأمر للمجموعات فقط.")
         return ConversationHandler.END
@@ -347,6 +327,8 @@ async def start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ASK_POINTS
 
 async def ask_points(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return ASK_POINTS
     text = update.message.text.strip()
     if not text.isdigit():
         await update.message.reply_text("اكتب رقم بين 1 و 100.")
@@ -362,6 +344,8 @@ async def ask_points(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 async def show_scores(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text:
+        return
     if not context.chat_data.get('round_active'):
         await update.message.reply_text("لا توجد جولة حالياً.")
         return
@@ -385,41 +369,23 @@ async def show_scores(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await receive_text(update, context)
 
-# ----- Keep-alive داخلي -----
-async def keep_alive(app):
-    while True:
-        try:
-            await asyncio.sleep(60)
-            # PING داخلي
-            for chat_id in app.chat_data:
-                pass  # مجرد تفاعل داخلي لمنع idle
-        except Exception:
-            continue
-
 def main():
-    while True:
-        try:
-            app = ApplicationBuilder().token(BOT_TOKEN).build()
-            conv_handler = ConversationHandler(
-                entry_points=[MessageHandler(filters.Regex(r'^جولة$'), start_game)],
-                states={ASK_POINTS: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_points)]},
-                fallbacks=[],
-            )
-            app.add_handler(CommandHandler("start", start))
-            app.add_handler(MessageHandler(filters.Regex(r'^\d+\s+كلمة$'), set_word_count))
-            app.add_handler(MessageHandler(filters.Regex(r'^مقال$'), send_article))
-            app.add_handler(MessageHandler(filters.Regex(r'^تكرار(\s+\d+)?$'), send_repeat))
-            app.add_handler(MessageHandler(filters.Regex(r'^شروط$'), send_condition))
-            app.add_handler(MessageHandler(filters.Regex(r'^نشرة$'), show_scores))
-            app.add_handler(conv_handler)
-            app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-            loop = asyncio.get_event_loop()
-            loop.create_task(keep_alive(app))
-            print("✅ البوت يعمل الآن...")
-            app.run_polling()
-        except Exception as e:
-            print("⚠️ خطأ مؤقت، إعادة التشغيل...", e)
-            time.sleep(5)
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    conv_handler = ConversationHandler(
+        entry_points=[MessageHandler(filters.Regex(r'^جولة$'), start_game)],
+        states={ASK_POINTS: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_points)]},
+        fallbacks=[],
+    )
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.Regex(r'^\d+\s+كلمة$'), set_word_count))
+    app.add_handler(MessageHandler(filters.Regex(r'^مقال$'), send_article))
+    app.add_handler(MessageHandler(filters.Regex(r'^تكرار(\s+\d+)?$'), send_repeat))
+    app.add_handler(MessageHandler(filters.Regex(r'^شروط$'), send_condition))
+    app.add_handler(MessageHandler(filters.Regex(r'^نشرة$'), show_scores))
+    app.add_handler(conv_handler)
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    print("✅ البوت يعمل الآن...")
+    app.run_polling()
 
 if __name__ == "__main__":
     import sys
