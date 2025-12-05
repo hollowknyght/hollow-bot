@@ -1,6 +1,5 @@
 import time
 import unicodedata
-import feedparser
 import re
 import random
 import asyncio
@@ -38,7 +37,11 @@ def normalize_arabic(text: str) -> str:
 def is_valid_arabic(text: str) -> bool:
     return bool(re.search(r'[\u0600-\u06FF]', text))
 
-def get_random_article(word_count: int) -> str:
+async def parse_feed_async(url):
+    import feedparser
+    return await asyncio.to_thread(feedparser.parse, url)
+
+async def get_random_article(word_count: int) -> str:
     global used_articles_normalized
     collected_words = []
     attempts = 0
@@ -47,7 +50,7 @@ def get_random_article(word_count: int) -> str:
         random.shuffle(RSS_FEEDS)
         for rss_url in RSS_FEEDS:
             try:
-                feed = feedparser.parse(rss_url)
+                feed = await parse_feed_async(rss_url)
             except Exception:
                 continue
             entries = [e for e in feed.entries if 'summary' in e or 'title' in e]
@@ -144,14 +147,14 @@ async def send_article(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user_command_allowed(context.user_data, cooldown=0.8):
         return
     word_count = context.chat_data.get('word_count', 10)
-    article = get_random_article(word_count)
+    article = await get_random_article(word_count)
     await update.message.reply_text(article)
     context.chat_data['start_time'] = time.time()
     context.chat_data['article'] = article
     context.chat_data['solved'] = False
 
 async def get_random_words(count=5):
-    article = get_random_article(100)
+    article = await get_random_article(100)
     words = list(set(normalize_arabic(article).split()))
     if len(words) < count:
         return words
@@ -192,7 +195,7 @@ async def send_condition(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "اكتب المقالة عكسيًا"
     ]
     word_count = context.chat_data.get('word_count', 10)
-    article = get_random_article(word_count)
+    article = await get_random_article(word_count)
     condition = random.choice(conditions)
     context.chat_data['condition'] = condition
     context.chat_data['condition_article'] = article
@@ -225,7 +228,6 @@ def apply_condition(article: str, condition: str) -> str:
     return article
 
 async def receive_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # إضافة الفحص لمنع الطيران
     if not update.message or not update.message.text:
         return
 
