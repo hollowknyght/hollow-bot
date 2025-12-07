@@ -113,7 +113,100 @@ def user_command_allowed(user_data: dict, cooldown: float = 0.8) -> bool:
     user_data['last_cmd_time'] = now
     return True
 
-# --------------------- أوامر البوت ---------------------
+# ==================== التعليقات الطريفة ====================
+AI_COMMENTS = [
+"ياخي أصابعك نايمة اليوم ولا شنو؟",
+"حتى القطار يسبقك وأنت تحاول تكتب",
+"طريقة كتابة ولا لعب عيال؟",
+"الكمبيوتر مستغرب من سرعتك",
+"كل ثانية تضيع وأنا أستعجل",
+"الحركة هذي تقتل الحماس",
+"تحب تشوف كل كلمة مرتين قبل ما تكتبها؟",
+"شد حيلك، كأنك نايم من الصبح",
+"نفس الغلط كل مرة؟",
+"التركيز عندك وين راح؟",
+"مرة ثانية نفس الغلط؟",
+"حركتك بطيئة جدًا، حتى السلحفاة تعديك",
+"ركز شوي ولا نخسر الجولة",
+"أحس أني أصحى وأنت لسه نايم",
+"أصابعك تحب التأجيل ولا شنو؟",
+"هذي كتابة ولا مسابقة على الجمر؟",
+"حركتك تخلي الكل ينتظرك",
+"غريبة السرعة عندك اليوم",
+"مرة ثانية نفس الخطأ؟ أبد ما تتعلم",
+"حاول ما تكرر الأخطاء",
+"أبطأ من القطار؟ حتى الجمل يضحك",
+"أنت تتعمد تبطئ؟",
+"كل ثانية ضايعة ونحنا ننتظر",
+"ركز شوي، كل ثانية محسوبة",
+"أصابعك تحب البطء ولا شنو؟",
+"كأنك نايم من كثر النوم",
+"حتى الطاولة صارت تتفرج عليك",
+"خلي السرعة شوي قبل ما نموت من الملل",
+"مرة ثانية نفس الغلط؟ شد حيلك!",
+"البطيء هذا يخرب كل شيء",
+"حركتك مضحكة وغيّرت الموازين",
+"كأنك تحب البطء",
+"واضح أنك متعود على التوقف",
+"طريقة الكتابة هذي تحتاج تمرين",
+"كل مرة نفس الفشل",
+"كأنك تكتب بالكعك بدل الكلمات",
+"اللعب جد، شد حيلك شوي",
+"مرة ثانية نفس الغلط؟ أبد، ما تتعلم",
+"أبطأ من النملة، والله",
+"حركتك مضحكة مره",
+"حاول تحسن قبل ما ينتهي الوقت",
+"أصابعك تحب النوم أكثر من الكتابة",
+"كأنك تحب تخسر الجولة",
+"البطء يصعب اللعبة علينا",
+"ركز، كل ثانية لها ثمن",
+"لا حول ولا قوة",
+"حاول تطلع من البطء هذا",
+"مرة ثانية نفس الغلط؟ نموت من الضحك",
+"أبطأ من القطار، والله",
+"حركة يدك بطيئة كأنك مسك القلم لأول مرة",
+"الكمبيوتر يضحك عليك من البطء",
+"ركز! كل كلمة لها وزنها",
+"مرة ثانية نفس الغلط؟ استسلمت",
+"أصابعك تسوي لك مقالب كل مرة",
+"كأنك تلعب بالبطء مش بالجولة",
+"حركة أبطأ من الجمل الصحراوي",
+"ركز ولا تضيع فرصتك بالكتابة",
+"أخطأت؟ تصلح الغلط بسرعة",
+"هذي سرعة ولا تسلية؟",
+"مرة ثانية نفس الغلط؟ مستحيل تتعلم",
+"أبطأ من النملة، صدقني",
+"حركتك مضحكة جدًا اليوم",
+"الشاشة تصيح من البطء",
+"أصابعك تحب التباطؤ ولا شنو؟",
+"كل ثانية تضيع وأنا أراقب",
+"ركّز شوي ولا نخسر الجولة",
+"مرة ثانية نفس الغلط؟ استسلمنا",
+"أبطأ من القطار، حتى الجمل يسبقك",
+"حركة أبطأ من المشي على الرمال",
+"حاول تركز قبل ما يخلص الوقت",
+"أصابعك نايمة ولا شنو؟",
+"كأنك تحب البطء بكل أريحية",
+"شد حيلك شوي ولا تضيع كل شيء",
+"مرة ثانية نفس الغلط؟ والله مستحيل تتعلم",
+"أبطأ من السلحفاة، صدقني",
+"حركتك مضحكة جدًا اليوم",
+"الطاولة تصيح من البطء",
+"أصابعك تحب النوم أكثر من الكتابة",
+"كأنك تحب البطء بكل قوة",
+"ركّز شوي ولا نخسر الجولة"
+]
+
+async def send_funny_comment_if_needed(update, context, mistakes_count: int, wpm: float):
+    if not context.chat_data.get('round_active', False):
+        return
+    if mistakes_count > 2 or (mistakes_count == 0 and wpm < 130):
+        comment = random.choice(AI_COMMENTS)
+        user_nick = update.effective_user.first_name  # الاسم الأول للمستخدم
+        await asyncio.sleep(1)  # تأخير ثانية قبل الإرسال
+        await update.message.reply_text(f"{user_nick}، {comment}")
+
+# ==================== بقية أوامر البوت ====================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if 'word_count' not in context.chat_data:
@@ -227,6 +320,7 @@ def apply_condition(article: str, condition: str) -> str:
         return ' '.join(words[::-1])
     return article
 
+# ==================== دالة الاستلام المحدثة ====================
 async def receive_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return
@@ -245,6 +339,7 @@ async def receive_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_text = update.message.text.strip()
         normalized_original = normalize_arabic(original)
         normalized_user_text = normalize_arabic(user_text)
+        mistakes_count = 0 if normalized_user_text == normalized_original else 3
         if normalized_user_text == normalized_original:
             context.chat_data['solved'] = True
             elapsed = time.time() - context.chat_data['start_time']
@@ -265,12 +360,14 @@ async def receive_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                     context.chat_data['round_active'] = False
             await update.message.reply_text(response)
+        await send_funny_comment_if_needed(update, context, mistakes_count, adjusted_wpm if 'adjusted_wpm' in locals() else 0)
 
     # ===== التكرار =====
     if 'repeat_target' in context.chat_data:
         user_text = update.message.text.strip()
         target_text = context.chat_data['repeat_target']
         normalized_target = normalize_arabic(target_text)
+        mistakes_count = 0 if normalize_arabic(user_text) == normalized_target else 3
         if normalize_arabic(user_text) == normalized_target:
             elapsed = time.time() - context.chat_data['start_time_repeat']
             _, _, wpm = calculate_wpm(context.chat_data['start_time_repeat'], user_text, repeat=True)
@@ -291,6 +388,7 @@ async def receive_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     context.chat_data['round_active'] = False
             await update.message.reply_text(response)
             del context.chat_data['repeat_target']
+        await send_funny_comment_if_needed(update, context, mistakes_count, adjusted_wpm if 'adjusted_wpm' in locals() else 0)
 
     # ===== الشروط =====
     if 'condition' in context.chat_data:
@@ -298,6 +396,7 @@ async def receive_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         condition = context.chat_data['condition']
         original_article = context.chat_data['condition_article']
         expected_answer = normalize_arabic(apply_condition(original_article, condition))
+        mistakes_count = 0 if normalize_arabic(user_text) == expected_answer else 3
         if normalize_arabic(user_text) == expected_answer and not context.chat_data.get('solved_condition', False):
             context.chat_data['solved_condition'] = True
             elapsed = time.time() - context.chat_data['start_time_condition']
@@ -318,7 +417,9 @@ async def receive_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                     context.chat_data['round_active'] = False
             await update.message.reply_text(response)
+        await send_funny_comment_if_needed(update, context, mistakes_count, adjusted_wpm if 'adjusted_wpm' in locals() else 0)
 
+# ==================== أوامر الجولات ====================
 async def start_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
         return ConversationHandler.END
